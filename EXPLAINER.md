@@ -1,22 +1,11 @@
-# Offline service worker contents
-## Problem
-A registered SW could be a fully interactive offline experience, an app shell, or a skeleton that only enables push notifications. Users have no easy way of identifying and navigating to sites that have full offline experiences when they have no network connection. Many users don’t have an expectation that offline web experiences exist at all.
-
-As service workers gain adoption, users will be interacting with more offline web experiences. Currently those experiences are opaque to browsers, meaning that there is little that can be done to support them. This repo explores ideas that enable service workers to broadcast the contents of their offline experience.
-
-## Use Cases
-With more knowledge about the contents of service workers, browsers could take steps to promote offline sites and content. When offline, a browser could only autocomplete URLs that have content to show the user. Browsers could also offer an “Offline” page that lists URLs and content that the user can explore.
-
-Transparent SW contents could be used with [foreign fetch] to create robust ecosystems of collaborating sites.
-
 ## Proposals
-This is a new area of exploration, with many proposals.
+This is a new area of exploration so all proposals are correspondingly rough.
 
 ### Manifest URL
 The manifest format could be extended to include an `offline_url` attribute:
 
 ```json
-"offline_url": "sw-contents.example.com/enumerate-cache"
+"offline_url": "/enumerate-cache"
 ```
 
 The service worker would intercept requests to this URL, inspect its cache, and respond with a JSON object specifying its contents, along with the URL necessary to view those contents:
@@ -26,24 +15,25 @@ The service worker would intercept requests to this URL, inspect its cache, and 
     {
  		    url: "sw-contents.example.com/videos",
  		    content-type: "video",
- 		    sources: ["example1", "example2"]	
+ 		    sources: ["cached-video-1.mp4", "cached-video-2.mp4"]	
  	  },
  	  {
  		    url: "sw-contents.example.com/articles",
  		    content-type: "text",
- 		    sources: ["example3", "example4"]
+ 		    sources: ["cached-article-1.html", "cached-article-2.html"]
  	  }
 ]
 ```
 
-The sources array could be extended to specify things like preview thumbnails, explainer text, etc. 
+Instead of returning strings, the sources array could return JSON objects specifying additional meta data like preview thumbnails, explainer text, etc. 
 
 A browser (or any site collaborating via foreign fetch) would poll the `offline_url` when constructing its offline content viewer.
 
 __Pros:__
 - Minimal API surface area additions to manifest or SW
 - Works with foreign fetch
-- Robust by default against content deletion or changes
+- Robust against content deletion or changes
+- Code simplicity: developer only has to maintain one method and does not have to explicitly track resources.
 
 __Cons:__
 - Browsers that want to track offline content for many sites would have to poll several service workers
@@ -63,13 +53,14 @@ The response to this method could be the same JSON array specified above.
 
 __Pros:__
 - `getcontent` is an explicit event rather than a special case of the `fetch` event
+- Code simplicity: developer only has to maintain one method and does not have to explicitly track resources.
 
 __Cons:__
 - Doesn’t work with foreign fetch
 - Requires browsers to poll multiple service workers
 
 ### Navigator method
-Another approach is to go with a strictly JavaScript approach:
+Another approach is to explicitly register/unregister cached content with the browser:
 
 ```javascript
 navigator.pageIndexing.add({
@@ -91,8 +82,9 @@ navigator.pageIndexing.remove(key);
 
 __Pros:__
 - Explicit registration eliminates need for browser poll
+- Browser knows when offline content is added and can take appropriate actions like granting [persistent storage](https://storage.spec.whatwg.org/#persistence), etc.
 
 __Cons:__
-- Developer has to track keys and explicitly add/remove content
+- Code complexity: Developer has to track keys and explicitly add/remove content at multiple points in the code base.
 - Browser needs to do extra work to clean up registrations when it clears content
 - Doesn’t work with foreign fetch
