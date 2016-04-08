@@ -38,6 +38,7 @@ __Pros:__
 - Code simplicity: developer only has to maintain one method and does not have to explicitly track resources.
 
 __Cons:__
+- If the SW fails to install while the `offline_url` is updated in the manifest, attempts to enumerate content may fail if the SW does not handle the new URL.
 - Browsers that want to track offline content for many sites would have to poll several service workers
 - Browser would not be aware of the moment when the content was added
 
